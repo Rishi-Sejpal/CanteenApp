@@ -1,0 +1,11 @@
+Authenticated: Yes
+Authentication Mechanism: Session-based (express-session with MongoDB store)
+Primary Protected Routes: cart, payment, order (staff-only status updates), menu (staff operations)
+JWT Middleware: Available in authJwt.js but not integrated into any routes
+Demo Accounts: 3 students (PRN/password), 1 staff, 1 admin
+Password Hashing: Salted SHA256 (consistent across codebase)
+Email Validation: @sitpune.edu.in required for registration
+Session Regeneration: Yes (prevents session fixation)
+Cookie Security: httpOnly, secure in production, sameSite=lax
+Rate Limiting: Not implemented
+Brute-Force Protection: Not implemented
