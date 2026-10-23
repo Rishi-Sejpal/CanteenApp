@@ -177,6 +177,51 @@ router.post("/register", async (req, res) => {
 // Log in with PRN (login ID) and password
 // Email login is still accepted for older clients.
 // ============================================
+// POST /api/auth/logout — Destroy the session
+router.post("/logout", async (req, res) => {
+    try {
+        if (req.session) {
+            req.session.destroy((destroyError) => {
+                if (destroyError) {
+                    console.error("Session destroy error:", destroyError.message);
+                    return res.status(500).json({
+                        message: "Unable to log out"
+                    });
+                }
+
+                // Clear the session cookie by responding without it
+                res.clearCookie("symbieat.sid", {
+                    path: "/",
+                    httpOnly: true,
+                    sameSite: "lax",
+                    secure: process.env.NODE_ENV === "production"
+                });
+
+                return res.status(200).json({
+                    message: "Logged out successfully"
+                });
+            });
+        } else {
+            // No session to destroy, still clear the cookie
+            res.clearCookie("symbieat.sid", {
+                path: "/",
+                httpOnly: true,
+                sameSite: "lax",
+                secure: process.env.NODE_ENV === "production"
+            });
+
+            return res.status(200).json({
+                message: "Logged out successfully"
+            });
+        }
+    } catch (error) {
+        console.error("Logout error:", error.message);
+        return res.status(500).json({
+            message: "Unable to log out"
+        });
+    }
+});
+
 router.post("/login", async (req, res) => {
     try {
         let { prn, email, password } = req.body || {};

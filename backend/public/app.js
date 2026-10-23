@@ -158,6 +158,21 @@
      ------------------------------------------------------------------------ */
   async function api(path, { method = "GET", body } = {}) {
     const options = { method, credentials: "same-origin", headers: {} };
+    // Include JWT from localStorage as Bearer token if available
+    const jwt = localStorage.getItem("symbieat-jwt");
+    if (jwt) {
+      // Check if token is still valid (not expired)
+      if (!isTokenValid(jwt)) {
+        // Token expired - clear it and unauthenticate
+        try { localStorage.removeItem("symbieat-jwt"); } catch { /* storage may be blocked */ }
+        state.user = null;
+        state.offline = true;
+        // Remove auth header so the request proceeds without JWT
+        // but the user will be unauthenticated on the backend
+      } else {
+        options.headers.Authorization = `Bearer ${jwt}`;
+      }
+    }
     if (body !== undefined) {
       options.headers["Content-Type"] = "application/json";
       options.body = JSON.stringify(body);
@@ -227,6 +242,32 @@
     if (quantity > 0) next.push({ id: String(dishId), quantity });
     writeJSON("symbieat-cart-v1", next);
     state.cart = localCartData();
+  }
+
+  function setJwtInLocalStorage(jwtToken) {
+    if (!jwtToken) return;
+    try {
+      localStorage.setItem("symbieat-jwt", jwtToken);
+    } catch { /* storage may be blocked */ }
+  }
+
+  function getTokenExpiry(jwtToken) {
+    if (!jwtToken || typeof jwtToken !== "string") return null;
+    try {
+      // JWT format: header.payload.signature
+      const parts = jwtToken.split(".");
+      if (parts.length !== 3) return null;
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.exp ? new Date(payload.exp * 1000) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function isTokenValid(jwtToken) {
+    const expiry = getTokenExpiry(jwtToken);
+    if (!expiry) return false;
+    return expiry > new Date();
   }
 
   function localOrders() {
@@ -428,7 +469,7 @@
     return `
       <footer class="site-footer">
         <div class="shell">
-          <span><strong>SymbiEat</strong> · North Campus canteen</span>
+          <span><strong>SymbiEat</strong> · SIT campus canteen</span>
           <span>Order ahead · Skip the queue · Collect with a token</span>
           <span>© ${new Date().getFullYear()} SymbiEat demo</span>
         </div>
@@ -465,7 +506,7 @@
           </div>
           <nav class="admin-nav" aria-label="Admin sections">${nav}</nav>
           <div class="admin-sidebar-foot">
-            Kitchen desk · North Campus<br />
+            Kitchen desk · SIT campus<br />
             Signed in as ${esc(state.user ? state.user.name : "Admin")}
           </div>
         </aside>
@@ -578,7 +619,7 @@
       <section class="hero">
         <div class="shell hero-grid">
           <div class="hero-copy fade-in">
-            <span class="eyebrow">North Campus canteen</span>
+            <span class="eyebrow">SIT campus canteen</span>
             <h1>Your campus cravings, sorted.</h1>
             <p class="lead hero-lead">Order your lunch before the rush, pay in a tap and pick it up with a
               four-digit token. The queue is for people who didn't plan ahead.</p>
@@ -590,7 +631,7 @@
             </div>
             <div class="meta-chips">
               <span class="meta-chip">${icon("clock", 14)} Ready in 10–15 min</span>
-              <span class="meta-chip">${icon("location", 14)} North Campus canteen</span>
+              <span class="meta-chip">${icon("location", 14)} SIT campus canteen</span>
             </div>
           </div>
           <div class="hero-visual fade-in">
@@ -958,7 +999,7 @@
     return `
       <div class="chef-head">
         <div>
-          <span class="eyebrow">North Campus canteen</span>
+          <span class="eyebrow">SIT campus canteen</span>
           <h1>Kitchen <span class="dot">board.</span></h1>
           <p>Every order on the pass, from the first token to the last pickup.</p>
         </div>
@@ -1043,7 +1084,7 @@
           <p class="page-sub">A live read on the canteen — orders moving, stock levels and the menu your
             students see right now.</p>
         </div>
-        <div class="shift-pill"><span class="pulse"></span> North Campus · Kitchen desk</div>
+        <div class="shift-pill"><span class="pulse"></span> SIT campus · Kitchen desk</div>
       </div>
 
       <div class="metrics">
@@ -1337,6 +1378,7 @@
       const result = await api("/api/auth/login", { method: "POST", body: { prn, password } });
       state.user = result.user;
       state.offline = false;
+      setJwtInLocalStorage(result.token);
       toast("Login successful");
       await loadAll();
       const target = state.user.role === "admin" ? "#/admin" : state.user.role === "staff" ? "#/chef" : "#/";
@@ -1352,11 +1394,13 @@
     try {
       await api("/api/auth/logout", { method: "POST" });
     } catch { /* ignore */ }
+    // Clear JWT from localStorage
+    try { localStorage.removeItem("symbieat-jwt"); } catch { /* storage may be blocked */ }
     state.user = null;
     state.cart = { items: [], total: 0 };
     state.orders = [];
-    window.location.hash = "#/login";
-    await renderRoute({ scroll: true });
+    // Clear auth tokens and refresh page for clean state reset
+    window.location.reload();
   }
 
   async function renderRoute({ scroll = false } = {}) {
@@ -1950,6 +1994,13 @@
     try {
       await ensureSession();
       await loadAll();
+      // Persist state from localStorage as fallback if API data is empty
+      if (state.cart.items.length === 0) {
+        state.cart = localCartData();
+      }
+      if (state.orders.length === 0) {
+        state.orders = localOrders();
+      }
     } catch (error) {
       console.error(error);
       toast("Could not reach the backend — starting local demo mode", "error");
