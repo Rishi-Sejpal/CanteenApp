@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist/
+*.build.*
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime stuff
+pids
+*.pid
+*.seed
+
+# Frontend (moved to outer directory)
+frontend/

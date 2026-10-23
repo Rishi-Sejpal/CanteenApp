@@ -1,0 +1,10 @@
+{
+  "name": "symbieat-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SymbiEat static HTML/CSS/JS front-end",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js && echo \"Front-end built. Run 'npm start' in ../backend and open http://localhost:5000\""
+  }
+}
