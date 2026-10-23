@@ -15,7 +15,7 @@
 - **Backend port:** `5000` (configurable via `PORT`)
 - **Database:** MongoDB (`symbieat` database)
 - **Session store:** `connect-mongo` (`sessions` collection)
-
+.
 > Note: the repository's `README.md` describes a React/TypeScript/Vite frontend, but the actual implemented frontend is a single vanilla-JS file (`backend/public/app.js`) with a tiny copy-based build (`backend/public/build.js`). This document describes the real implementation.
 
 ---
