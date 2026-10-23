@@ -14,8 +14,6 @@ const PORT = process.env.PORT || 5000;
 // ============================================
 // Middleware
 // ============================================
-
-// Credentialed CORS is needed when the Vite dev server calls the API
 // directly instead of using its /api proxy.
 app.use(
   cors({
@@ -54,8 +52,8 @@ app.use(
 // Home Route
 // ============================================
 
-const publicDir = path.join(__dirname, "public");
-const frontendDist = path.join(publicDir, "dist");
+// Frontend path: built files are in backend/public/dist/
+const frontendDist = path.join(__dirname, "public", "dist");
 const frontendIndex = path.join(frontendDist, "index.html");
 
 app.get("/", (req, res) => {
@@ -123,16 +121,11 @@ app.use("/api/inventory", require("./routes/inventoryRoutes"));
 if (fs.existsSync(frontendIndex)) {
   app.use(express.static(frontendDist));
 
-  // Default routing: serve index.html for any non-API GET route
-  // (enables HTML5 mode / client-side routing)
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api")) {
+    if (req.method !== "GET" || req.path.startsWith("/api")) {
       return next();
     }
-    if (req.method !== "GET") {
-      return next();
-    }
-    return res.sendFile(frontendIndex);
+    return res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
 
